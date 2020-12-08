@@ -86,8 +86,8 @@ public class Bot extends MecanumDrive {
     //PID Coefficients
     public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(4.5, 0, 0);
     public static PIDCoefficients HEADING_PID = new PIDCoefficients(4, 0, 0);
-    public static PIDCoefficients SHOOTER_PID = new PIDCoefficients(0, 0, 0);
-    public static PIDCoefficients INTAKE_PID = new PIDCoefficients(0, 0, 0);
+    public static PIDFCoefficients SHOOTER_PID = new PIDFCoefficients(40,0,3,15);
+    public static PIDFCoefficients INTAKE_PID = new PIDFCoefficients(0, 0, 0,0);
 
 
     public static double VX_WEIGHT = 1;
@@ -189,9 +189,6 @@ public class Bot extends MecanumDrive {
         turnController = new PIDFController(HEADING_PID);
         turnController.setInputBounds(0, 2 * Math.PI);
 
-        shootingController = new PIDFController(SHOOTER_PID);
-        intakeController = new PIDFController(INTAKE_PID);
-
         constraints = new MecanumConstraints(BASE_CONSTRAINTS, TRACK_WIDTH);
         follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
                 new Pose2d(0.5, 0.5, Math.toRadians(5.0)), 0.5);
@@ -263,6 +260,10 @@ public class Bot extends MecanumDrive {
         if (RUN_USING_ENCODER && MOTOR_VELO_PID != null) {
             setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, MOTOR_VELO_PID);
         }
+
+        Shooter.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(
+                SHOOTER_PID.p, SHOOTER_PID.i, SHOOTER_PID.d, SHOOTER_PID.f * 12 / batteryVoltageSensor.getVoltage()
+        ));
         ;
 
         // TODO: reverse any motors using DcMotor.setDirection()
