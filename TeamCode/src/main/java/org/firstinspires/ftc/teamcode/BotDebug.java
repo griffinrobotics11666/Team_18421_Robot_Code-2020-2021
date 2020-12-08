@@ -59,7 +59,7 @@ import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocaliz
 public class BotDebug extends LinearOpMode {
     public static double shooterPower = 0.0;
     public static double intakePower= 0.0;
-    public static double ringPushingPosition = 0.5;
+    public static double ringPushingPosition = 0.34;
     public static double linearSlidePower = 0.5;
     public static double clawBasePosition = 0.5;
     public static double clawPosition = 0.5;
@@ -89,7 +89,7 @@ public class BotDebug extends LinearOpMode {
                         )
                 );
             }
-            bot.update();
+//            bot.update();
         }
 
         bot.deactivateVision();
