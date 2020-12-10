@@ -67,11 +67,23 @@ public class BotDebug extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
+        telemetry.setAutoClear(false);
+        telemetry.addData("initializing bot","");
+        telemetry.update();
         Bot bot = new Bot(hardwareMap);
+        telemetry.addData("setting runmode","");
+        telemetry.update();
         bot.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        telemetry.addData("setting pose estimate","");
+        telemetry.update();
         bot.setPoseEstimate(new Pose2d(0, 0, 0));
-        bot.initVision();
         waitForStart();
+        telemetry.addData("initializing vision","");
+        telemetry.update();
+        bot.initVision();
+        bot.detectStarterStack(1);
+        telemetry.addData("running while loop","");
+        telemetry.update();
         while (opModeIsActive()) {
             bot.Shooter.setPower(shooterPower);
             bot.Intake.setPower(intakePower);
@@ -89,7 +101,7 @@ public class BotDebug extends LinearOpMode {
                         )
                 );
             }
-//            bot.update();
+            bot.update();
         }
 
         bot.deactivateVision();

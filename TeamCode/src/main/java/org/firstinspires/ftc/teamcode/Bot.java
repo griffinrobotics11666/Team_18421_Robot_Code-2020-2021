@@ -34,6 +34,7 @@ import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigu
 
 import org.firstinspires.ftc.robotcontroller.external.samples.ConceptScanServo;
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
 import org.firstinspires.ftc.robotcore.external.matrices.VectorF;
@@ -158,10 +159,11 @@ public class Bot extends MecanumDrive {
     private static final String TFOD_MODEL_ASSET = "UltimateGoal.tflite";
     private static final String LABEL_FIRST_ELEMENT = "Quad";
     private static final String LABEL_SECOND_ELEMENT = "Single";
-    public static int numTfodIterations = 20;
+    public static int numTfodIterations = 200;
+    private int totalTfodIterations = numTfodIterations;
     private int currentTfodIteration = 0;
     private boolean inTrajectory = false;
-    private String detectedStack = null;
+    public String detectedStack = null;
 
     //Hardware Variable Declarations
     // TODO: Add the rest of the robot hardware
@@ -412,9 +414,28 @@ public class Bot extends MecanumDrive {
     }
 
     public String detectStarterStack() {
+        totalTfodIterations = numTfodIterations;
         inTrajectory = (mode==Mode.FOLLOW_TRAJECTORY);
         mode = Bot.Mode.DETECT_STARTER_STACK;
         waitForIdle();
+        if(inTrajectory){
+            mode = Mode.FOLLOW_TRAJECTORY;
+        } else {
+            mode = Mode.IDLE;
+        }
+        return detectedStack;
+    }
+
+    public String detectStarterStack(int iterations) {
+        totalTfodIterations = iterations;
+        inTrajectory = (mode==Mode.FOLLOW_TRAJECTORY);
+        mode = Bot.Mode.DETECT_STARTER_STACK;
+        waitForIdle();
+        if(inTrajectory){
+            mode = Mode.FOLLOW_TRAJECTORY;
+        } else {
+            mode = Mode.IDLE;
+        }
         return detectedStack;
     }
 
@@ -433,6 +454,7 @@ public class Bot extends MecanumDrive {
      * Initialize the TensorFlow Object Detection engine.
      */
     private void initTfod() {
+
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
         tfodParameters.minResultConfidence = 0.8f;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
@@ -449,7 +471,7 @@ public class Bot extends MecanumDrive {
     }
 
     public void update() {
-//        updatePoseEstimate();
+        updatePoseEstimate();
 
         Pose2d currentPose = getPoseEstimate();
         Pose2d lastError = getLastError();
@@ -533,10 +555,13 @@ public class Bot extends MecanumDrive {
             case DETECT_STARTER_STACK: {
                 if(tfod!=null){
                     currentTfodIteration++;
-                    if(currentTfodIteration<=numTfodIterations) {
+                    if(currentTfodIteration<=totalTfodIterations) {
                         if (currentTfodIteration == 1) {
                             tfod.activate();
                             detectedStack = null;
+                        }
+                        else {
+                            detectedStack = "Actually running";
                         }
                         // getUpdatedRecognitions() will return null if no new information is available since
                         // the last time that call was made.
@@ -558,26 +583,15 @@ public class Bot extends MecanumDrive {
                     else{
                         currentTfodIteration=0;
                         tfod.deactivate();
-                        if(inTrajectory){
-                            mode=Mode.FOLLOW_TRAJECTORY;
-                        }
-                        else {
-                            mode=Mode.IDLE;
-                        }
+                        mode = Mode.IDLE;
                     }
                 }
                 else {
-                    if(inTrajectory){
-                        mode=Mode.FOLLOW_TRAJECTORY;
-                    }
-                    else {
-                        mode=Mode.IDLE;
-                    }
+                    mode = Mode.IDLE;
                 }
                 break;
             }
         }
-
         fieldOverlay.setStroke("#3F51B5");
         DashboardUtil.drawRobot(fieldOverlay, currentPose);
 
