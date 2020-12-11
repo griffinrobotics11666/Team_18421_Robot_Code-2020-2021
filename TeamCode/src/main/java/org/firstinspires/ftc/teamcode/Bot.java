@@ -126,7 +126,7 @@ public class Bot extends MecanumDrive {
      * {@link #vuforia} is the variable we will use to store our instance of the Vuforia
      * localization engine.
      */
-    private VuforiaLocalizer vuforia;
+    public VuforiaLocalizer vuforia;
     private VuforiaTrackables vuforiaTrackables;
 
     private static final VuforiaLocalizer.CameraDirection CAMERA_CHOICE = BACK;

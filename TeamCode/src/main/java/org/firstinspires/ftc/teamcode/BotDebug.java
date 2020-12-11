@@ -10,6 +10,7 @@ import com.acmerobotics.roadrunner.drive.MecanumDrive;
 import com.acmerobotics.roadrunner.followers.HolonomicPIDVAFollower;
 import com.acmerobotics.roadrunner.followers.TrajectoryFollower;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.profile.MotionProfile;
 import com.acmerobotics.roadrunner.trajectory.TrajectoryBuilder;
 import com.acmerobotics.roadrunner.trajectory.constraints.DriveConstraints;
@@ -76,11 +77,11 @@ public class BotDebug extends LinearOpMode {
         bot.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         telemetry.addData("setting pose estimate","");
         telemetry.update();
-        bot.setPoseEstimate(new Pose2d(0, 0, 0));
-        waitForStart();
+        bot.setPoseEstimate(new Pose2d(0, -48, 0));
         telemetry.addData("initializing vision","");
         telemetry.update();
         bot.initVision();
+        waitForStart();
         bot.detectStarterStack(1);
         telemetry.addData("running while loop","");
         telemetry.update();
@@ -93,10 +94,19 @@ public class BotDebug extends LinearOpMode {
             bot.Claw.setPosition(clawPosition);
 
             if(canDrive){
+                // Create a vector from the gamepad x/y inputs
+                // Then, rotate that vector by the inverse of that heading
+                Vector2d input = new Vector2d(
+                        -gamepad1.left_stick_y,
+                        -gamepad1.left_stick_x
+                ).rotated(-bot.getPoseEstimate().getHeading());
+
+                // Pass in the rotated input + right stick value for rotation
+                // Rotation is not part of the rotated input thus must be passed in separately
                 bot.setWeightedDrivePower(
                         new Pose2d(
-                                -gamepad1.left_stick_y,
-                                -gamepad1.left_stick_x,
+                                input.getX(),
+                                input.getY(),
                                 -gamepad1.right_stick_x
                         )
                 );
