@@ -66,6 +66,15 @@ public class BotDebug extends LinearOpMode {
     public static double clawPosition = 0.5;
     public static boolean canDrive = true;
 
+    public static double highGoalX = 70.75;
+    public static double highGoalZ = -46.5+12;
+    public static double highGoalY = 91/2.54;
+
+    public static double shootingHeight = 0.0;
+
+    private double deltaX;
+    private double deltaZ;
+
     @Override
     public void runOpMode() throws InterruptedException {
         telemetry.setAutoClear(false);
@@ -86,9 +95,14 @@ public class BotDebug extends LinearOpMode {
         telemetry.addData("running while loop","");
         telemetry.update();
         while (opModeIsActive()) {
+            deltaX = bot.getPoseEstimate().getX()-highGoalX;
+            deltaZ = bot.getPoseEstimate().getY()-highGoalZ;
+            double initialvY = Math.sqrt(-2*-9.8*(highGoalY-shootingHeight));
+            double vyTime = initialvY/9.8;
+
             bot.Shooter.setPower(shooterPower);
             bot.Intake.setPower(intakePower);
-            bot.ringPusher.setPosition(ringPushingPosition);
+            bot.Trigger.setPosition(ringPushingPosition);
             bot.linearSlide.setPosition(linearSlidePower);
             bot.clawBase.setPosition(clawBasePosition);
             bot.Claw.setPosition(clawPosition);

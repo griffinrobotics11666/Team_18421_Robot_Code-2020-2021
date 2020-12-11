@@ -171,7 +171,7 @@ public class Bot extends MecanumDrive {
     public List<DcMotorEx> motors;
     public DcMotorEx Shooter;
     public DcMotorEx Intake;
-    public Servo ringPusher;
+    public Servo Trigger;
     public Servo linearSlide;
     public Servo clawBase;
     public Servo Claw;
@@ -224,7 +224,7 @@ public class Bot extends MecanumDrive {
 
         Shooter = hardwareMap.get(DcMotorEx.class, "shooter");
         Intake = hardwareMap.get(DcMotorEx.class, "feeder");
-        ringPusher = hardwareMap.get(Servo.class, "trigger");
+        Trigger = hardwareMap.get(Servo.class, "trigger");
         linearSlide = hardwareMap.get(Servo.class, "linear_slide");
         clawBase = hardwareMap.get(Servo.class, "wrist");
         Claw = hardwareMap.get(Servo.class, "hand");
@@ -430,12 +430,16 @@ public class Bot extends MecanumDrive {
         totalTfodIterations = iterations;
         inTrajectory = (mode==Mode.FOLLOW_TRAJECTORY);
         mode = Bot.Mode.DETECT_STARTER_STACK;
+        tfod.activate();
+        detectedStack = null;
         waitForIdle();
         if(inTrajectory){
             mode = Mode.FOLLOW_TRAJECTORY;
         } else {
             mode = Mode.IDLE;
         }
+        currentTfodIteration=0;
+        tfod.deactivate();
         return detectedStack;
     }
 
@@ -556,13 +560,6 @@ public class Bot extends MecanumDrive {
                 if(tfod!=null){
                     currentTfodIteration++;
                     if(currentTfodIteration<=totalTfodIterations) {
-                        if (currentTfodIteration == 1) {
-                            tfod.activate();
-                            detectedStack = null;
-                        }
-                        else {
-                            detectedStack = "Actually running";
-                        }
                         // getUpdatedRecognitions() will return null if no new information is available since
                         // the last time that call was made.
                         List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
@@ -581,8 +578,6 @@ public class Bot extends MecanumDrive {
                         }
                     }
                     else{
-                        currentTfodIteration=0;
-                        tfod.deactivate();
                         mode = Mode.IDLE;
                     }
                 }
