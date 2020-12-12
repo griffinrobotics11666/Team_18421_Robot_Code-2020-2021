@@ -29,6 +29,7 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -61,19 +62,24 @@ public class BotDebug extends LinearOpMode {
     public static double shooterPower = 0.0;
     public static double intakePower= 0.0;
     public static double ringPushingPosition = 0.34;
+    public static double ringShootingPosition = 0.1;
     public static double linearSlidePower = 0.5;
     public static double clawBasePosition = 0.5;
     public static double clawPosition = 0.5;
     public static boolean canDrive = true;
 
-    public static double highGoalX = 70.75;
-    public static double highGoalZ = -46.5+12;
-    public static double highGoalY = 91/2.54;
+    private ElapsedTime shootingClock = new ElapsedTime();
+    public static double shootingDelay = 500.0;
+    private boolean shooting = false;
 
-    public static double shootingHeight = 0.0;
-
-    private double deltaX;
-    private double deltaZ;
+//    public static double highGoalX = 70.75;
+//    public static double highGoalZ = -46.5+12;
+//    public static double highGoalY = 91/2.54;
+//
+//    public static double shootingHeight = 0.0;
+//
+//    private double deltaX;
+//    private double deltaZ;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -95,17 +101,27 @@ public class BotDebug extends LinearOpMode {
         telemetry.addData("running while loop","");
         telemetry.update();
         while (opModeIsActive()) {
-            deltaX = bot.getPoseEstimate().getX()-highGoalX;
-            deltaZ = bot.getPoseEstimate().getY()-highGoalZ;
-            double initialvY = Math.sqrt(-2*-9.8*(highGoalY-shootingHeight));
-            double vyTime = initialvY/9.8;
+//            deltaX = bot.getPoseEstimate().getX()-highGoalX;
+//            deltaZ = bot.getPoseEstimate().getY()-highGoalZ;
+//            double initialvY = Math.sqrt(-2*-9.8*(highGoalY-shootingHeight));
+//            double vyTime = initialvY/9.8;
 
             bot.Shooter.setPower(shooterPower);
             bot.Intake.setPower(intakePower);
-            bot.Trigger.setPosition(ringPushingPosition);
+//            bot.Trigger.setPosition(ringPushingPosition);
             bot.linearSlide.setPosition(linearSlidePower);
             bot.clawBase.setPosition(clawBasePosition);
             bot.Claw.setPosition(clawPosition);
+
+            if(gamepad1.x && !shooting){
+                shooting = true;
+                shootingClock.reset();
+                bot.Trigger.setPosition(ringShootingPosition);
+            }
+            if(shootingClock.milliseconds() >= shootingDelay){
+                bot.Trigger.setPosition(ringPushingPosition);
+                shooting = false;
+            }
 
             if(canDrive){
                 // Create a vector from the gamepad x/y inputs

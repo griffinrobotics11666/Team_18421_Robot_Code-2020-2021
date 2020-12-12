@@ -38,6 +38,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
 import org.firstinspires.ftc.robotcore.external.matrices.VectorF;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackable;
@@ -89,7 +90,6 @@ public class Bot extends MecanumDrive {
     public static PIDCoefficients HEADING_PID = new PIDCoefficients(4, 0, 0);
     public static PIDFCoefficients SHOOTER_PID = new PIDFCoefficients(40,0,3,15);
     public static PIDFCoefficients INTAKE_PID = new PIDFCoefficients(0, 0, 0,0);
-
 
     public static double VX_WEIGHT = 1;
     public static double VY_WEIGHT = 1;
@@ -145,6 +145,8 @@ public class Bot extends MecanumDrive {
     private float phoneXRotate    = 0;
     private float phoneYRotate    = 0;
     private float phoneZRotate    = 0;
+
+    private boolean usingVuforia = true;
 
     private VuforiaTrackables targetsUltimateGoal;
 
@@ -370,11 +372,12 @@ public class Bot extends MecanumDrive {
             phoneXRotate = 90 ;
         }
 
+//        phoneZRotate = 90;
         // Next, translate the camera lens to where it is on the robot.
         // In this example, it is centered (left to right), but forward of the middle of the robot, and above ground level.
-        final float CAMERA_FORWARD_DISPLACEMENT  = 4.0f * mmPerInch;   // eg: Camera is 4 Inches in front of robot-center
-        final float CAMERA_VERTICAL_DISPLACEMENT = 8.0f * mmPerInch;   // eg: Camera is 8 Inches above ground
-        final float CAMERA_LEFT_DISPLACEMENT     = 0;     // eg: Camera is ON the robot's center line
+        final float CAMERA_FORWARD_DISPLACEMENT  = 0f * mmPerInch;   // eg: Camera is 4 Inches in front of robot-center
+        final float CAMERA_VERTICAL_DISPLACEMENT = 2.625f * mmPerInch;   // eg: Camera is 8 Inches above ground
+        final float CAMERA_LEFT_DISPLACEMENT     = 0f* mmPerInch;     // eg: Camera is ON the robot's center line
 
         OpenGLMatrix robotFromCamera = OpenGLMatrix
                 .translation(CAMERA_FORWARD_DISPLACEMENT, CAMERA_LEFT_DISPLACEMENT, CAMERA_VERTICAL_DISPLACEMENT)
@@ -411,6 +414,10 @@ public class Bot extends MecanumDrive {
     public void followTrajectory(Trajectory trajectory) {
         followTrajectoryAsync(trajectory);
         waitForIdle();
+    }
+
+    public void breakTrajectory(){
+        mode = Mode.IDLE;
     }
 
     public String detectStarterStack() {
@@ -474,8 +481,12 @@ public class Bot extends MecanumDrive {
     }
 
     public void deactivateVision(){
-        targetsUltimateGoal.deactivate();
+//        targetsUltimateGoal.deactivate();
         tfod.deactivate();
+    }
+
+    public void usingVuforia(boolean UsingVuforia){
+        usingVuforia = UsingVuforia;
     }
 
     public void update() {
@@ -483,6 +494,7 @@ public class Bot extends MecanumDrive {
 
         Pose2d currentPose = getPoseEstimate();
         Pose2d lastError = getLastError();
+        PoseStorage.currentPose = currentPose;
 
         poseHistory.add(currentPose);
 
@@ -529,11 +541,18 @@ public class Bot extends MecanumDrive {
             // express the rotation of the robot in degrees.
             Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
             packet.put("Rot (deg)(Roll, Pitch, Heading) : ", rotation.firstAngle + ", " + rotation.secondAngle + ", " + rotation.thirdAngle);
-            setPoseEstimate(new Pose2d(translation.get(0),translation.get(1),rotation.thirdAngle));
+//            setPoseEstimate(new Pose2d(translation.get(0)/mmPerInch,translation.get(1)/mmPerInch,rotation.thirdAngle));
+            DashboardUtil.drawRobot(fieldOverlay, new Pose2d(translation.get(0)/mmPerInch+Math.cos(currentPose.getHeading())*(-8.5)-Math.sin(currentPose.getHeading())*3.35,translation.get(1)/mmPerInch+Math.sin(currentPose.getHeading())*(-8.5)+Math.cos(currentPose.getHeading())*3.35,currentPose.getHeading()));
+            if(usingVuforia){
+                setPoseEstimate(new Pose2d(translation.get(0)/mmPerInch+Math.cos(currentPose.getHeading())*(-8.5)-Math.sin(currentPose.getHeading())*3.35,translation.get(1)/mmPerInch+Math.sin(currentPose.getHeading())*(-8.5)+Math.cos(currentPose.getHeading())*3.35,currentPose.getHeading()));
+                poseHistory.clear();
+            }
         }
         else {
             packet.put("Visible Target", "none");
         }
+
+        packet.put("Intake Speed", Intake.getCurrent(CurrentUnit.AMPS));
 
         switch (mode) {
             case IDLE:
