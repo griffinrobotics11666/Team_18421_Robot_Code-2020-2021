@@ -86,7 +86,7 @@ public class BotDebug extends LinearOpMode {
         bot.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         telemetry.addData("setting pose estimate","");
         telemetry.update();
-        bot.setPoseEstimate(new Pose2d(0, -48, 0));
+        bot.setPoseEstimate(new Pose2d(-63, -25, 0));
         telemetry.addData("initializing vision","");
         telemetry.update();
         bot.initVision();

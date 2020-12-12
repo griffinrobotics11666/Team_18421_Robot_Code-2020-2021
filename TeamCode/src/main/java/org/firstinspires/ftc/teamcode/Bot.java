@@ -417,12 +417,16 @@ public class Bot extends MecanumDrive {
         totalTfodIterations = numTfodIterations;
         inTrajectory = (mode==Mode.FOLLOW_TRAJECTORY);
         mode = Bot.Mode.DETECT_STARTER_STACK;
+        tfod.activate();
+        detectedStack = null;
         waitForIdle();
         if(inTrajectory){
             mode = Mode.FOLLOW_TRAJECTORY;
         } else {
             mode = Mode.IDLE;
         }
+        currentTfodIteration=0;
+        tfod.deactivate();
         return detectedStack;
     }
 
