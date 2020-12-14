@@ -64,13 +64,20 @@ public class BotDebug extends LinearOpMode {
     public static double ringPushingPosition = 0.34;
     public static double ringShootingPosition = 0.1;
     public static double linearSlidePower = 0.5;
-    public static double clawBasePosition = 0.5;
-    public static double clawPosition = 0.5;
+    public static double armPosition = 0.5;
+    public static double latchPosition = 0.5;
     public static boolean canDrive = true;
 
     private ElapsedTime shootingClock = new ElapsedTime();
     public static double shootingDelay = 500.0;
     private boolean shooting = false;
+    private static double shootingCooldown = 500.0;
+    private enum ShootingState {
+        SHOOT,
+        RESET,
+        WAIT
+    }
+    private ShootingState shoot = ShootingState.SHOOT;
 
 //    public static double highGoalX = 70.75;
 //    public static double highGoalZ = -46.5+12;
@@ -110,17 +117,34 @@ public class BotDebug extends LinearOpMode {
             bot.Intake.setPower(intakePower);
 //            bot.Trigger.setPosition(ringPushingPosition);
             bot.linearSlide.setPosition(linearSlidePower);
-            bot.clawBase.setPosition(clawBasePosition);
-            bot.Claw.setPosition(clawPosition);
+            bot.Arm.setPosition(armPosition);
+            bot.Latch.setPosition(latchPosition);
 
-            if(gamepad1.x && !shooting){
-                shooting = true;
-                shootingClock.reset();
-                bot.Trigger.setPosition(ringShootingPosition);
-            }
-            if(shootingClock.milliseconds() >= shootingDelay){
-                bot.Trigger.setPosition(ringPushingPosition);
-                shooting = false;
+//Shooting Code
+            switch(shoot){
+                case SHOOT: {
+                    if(gamepad1.x){
+                        shootingClock.reset();
+                        bot.Trigger.setPosition(ringShootingPosition);
+                        shoot = ShootingState.RESET;
+                        break;
+                    }
+                }
+                case RESET: {
+                    if(shootingClock.milliseconds()>= shootingDelay){
+                        shootingClock.reset();
+                        bot.Trigger.setPosition(ringPushingPosition);
+                        shoot = ShootingState.WAIT;
+                        break;
+                    }
+                }
+                case WAIT: {
+                    if(shootingClock.milliseconds()>= shootingCooldown){
+                        shootingClock.reset();
+                        shoot= ShootingState.SHOOT;
+                        break;
+                    }
+                }
             }
 
             if(canDrive){

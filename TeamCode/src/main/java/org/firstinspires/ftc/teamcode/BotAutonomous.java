@@ -33,7 +33,7 @@ public class BotAutonomous extends LinearOpMode {
         drive.setPoseEstimate(initialPose);
         drive.initVision();
 
-        drive.clawBase.setPosition(armUp);
+        drive.Arm.setPosition(armUp);
         drive.Trigger.setPosition(triggerStart);
 
         Trajectory followStack = drive.trajectoryBuilder(initialPose)
@@ -58,9 +58,9 @@ public class BotAutonomous extends LinearOpMode {
         }
         waitForStart();
 
-        drive.clawBase.setPosition(0.7);
+        drive.Arm.setPosition(0.7);
         sleep(100);
-        drive.clawBase.setPosition(0.5);
+        drive.Arm.setPosition(0.5);
         sleep(200);
 
         drive.followTrajectory(followStack);
@@ -73,7 +73,7 @@ public class BotAutonomous extends LinearOpMode {
                     .splineToSplineHeading(wobbleSpot, 0.0)
                     .build();
             drive.followTrajectory(moveWobble);
-            drive.clawBase.setPosition(armDown);
+            drive.Arm.setPosition(armDown);
             sleep(700);
         }
         if(drive.detectedStack == "Single"){
@@ -83,7 +83,7 @@ public class BotAutonomous extends LinearOpMode {
                     .splineToSplineHeading(wobbleSpot, 0.0)
                     .build();
             drive.followTrajectory(moveWobble);
-            drive.clawBase.setPosition(armDown);
+            drive.Arm.setPosition(armDown);
             sleep(700);
         }
         if(drive.detectedStack == "Quad"){
@@ -95,7 +95,7 @@ public class BotAutonomous extends LinearOpMode {
                     .splineToSplineHeading(wobbleSpot, 0.0)
                     .build();
             drive.followTrajectory(moveWobble);
-            drive.clawBase.setPosition(armDown);
+            drive.Arm.setPosition(armDown);
             sleep(700);
         }
 
@@ -109,7 +109,7 @@ public class BotAutonomous extends LinearOpMode {
 //        drive.clawBase.setPosition(armDown);
 //        sleep(700);
 
-        Trajectory phase2 = drive.trajectoryBuilder(new Pose2d(moveWobble.end().getX(),moveWobble.end().getY(),0.0))
+        Trajectory phase2 = drive.trajectoryBuilder(new Pose2d(moveWobble.end().getX(),moveWobble.end().getY(),0.0), moveWobble.end().getHeading())
                 .splineToSplineHeading(new Pose2d(0, -36, Math.toRadians(-90)), 0.0)
                 .build();
         drive.followTrajectory(phase2);

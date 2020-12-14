@@ -147,6 +147,7 @@ public class Bot extends MecanumDrive {
     private float phoneZRotate    = 0;
 
     private boolean usingVuforia = true;
+    public boolean getVuforiaPosition = true;
 
     private VuforiaTrackables targetsUltimateGoal;
 
@@ -175,12 +176,15 @@ public class Bot extends MecanumDrive {
     public DcMotorEx Intake;
     public Servo Trigger;
     public Servo linearSlide;
-    public Servo clawBase;
-    public Servo Claw;
+    public Servo Arm;
+    public Servo Latch;
     public BNO055IMU imu;
     public WebcamName Webcam;
 
     private VoltageSensor batteryVoltageSensor;
+    public boolean isFeeding = false;
+    public boolean isShooting = false;
+    public int numRings = 0;
 
     public Bot(HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
@@ -228,8 +232,8 @@ public class Bot extends MecanumDrive {
         Intake = hardwareMap.get(DcMotorEx.class, "feeder");
         Trigger = hardwareMap.get(Servo.class, "trigger");
         linearSlide = hardwareMap.get(Servo.class, "linear_slide");
-        clawBase = hardwareMap.get(Servo.class, "wrist");
-        Claw = hardwareMap.get(Servo.class, "hand");
+        Arm = hardwareMap.get(Servo.class, "wrist");
+        Latch = hardwareMap.get(Servo.class, "latch");
         Webcam = hardwareMap.get(WebcamName.class, "webcam");
 
         tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
@@ -547,12 +551,26 @@ public class Bot extends MecanumDrive {
                 setPoseEstimate(new Pose2d(translation.get(0)/mmPerInch+Math.cos(currentPose.getHeading())*(-8.5)-Math.sin(currentPose.getHeading())*3.35,translation.get(1)/mmPerInch+Math.sin(currentPose.getHeading())*(-8.5)+Math.cos(currentPose.getHeading())*3.35,currentPose.getHeading()));
                 poseHistory.clear();
             }
+            if(getVuforiaPosition){
+                setPoseEstimate(new Pose2d(translation.get(0)/mmPerInch+Math.cos(currentPose.getHeading())*(-8.5)-Math.sin(currentPose.getHeading())*3.35,translation.get(1)/mmPerInch+Math.sin(currentPose.getHeading())*(-8.5)+Math.cos(currentPose.getHeading())*3.35,currentPose.getHeading()));
+                poseHistory.clear();
+            }
         }
         else {
             packet.put("Visible Target", "none");
         }
 
-        packet.put("Intake Speed", Intake.getCurrent(CurrentUnit.AMPS));
+        if(Intake.getCurrent(CurrentUnit.AMPS)>5.0 && !isFeeding){
+            numRings++;
+            isFeeding = true;
+        }
+        if(Intake.getCurrent(CurrentUnit.AMPS)<4.0){
+            isFeeding = false;
+        }
+
+        packet.put("Intake Current", Intake.getCurrent(CurrentUnit.AMPS));
+        packet.put("Shooter Current", Shooter.getCurrent(CurrentUnit.AMPS));
+        packet.put("Number of Rings", numRings);
 
         switch (mode) {
             case IDLE:

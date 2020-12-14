@@ -30,6 +30,8 @@ public class BotDriveControl extends LinearOpMode{
     Right Joystick = Robot Heading
 
     Dpad Left = Reverse Feeder - Only works if feeder is off
+    Dpad Down = Quit Path Following
+    Dpad Up = Reset Position using Vuforia
      */
 
 
@@ -70,10 +72,10 @@ public class BotDriveControl extends LinearOpMode{
         Bot drive = new Bot(hardwareMap);
         drive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         drive.setPoseEstimate(PoseStorage.currentPose);
-
+        drive.usingVuforia(false);
 
         drive.initVision();
-        drive.clawBase.setPosition(0.9);
+        drive.Arm.setPosition(0.9);
         drive.Trigger.setPosition(triggerStart);
         telemetry.addData("Ready!", "");
         telemetry.update();
@@ -86,25 +88,25 @@ public class BotDriveControl extends LinearOpMode{
                 case DRIVER_CONTROL: {
                     //Wobble Cycle
                     if(wobbleMode == 0){
-                        drive.clawBase.setPosition(0.34);
+                        drive.Arm.setPosition(0.34);
                     }
                     else if(wobbleMode == 1){
-                        drive.clawBase.setPosition(0.69);
+                        drive.Arm.setPosition(0.69);
                     }
                     else if(wobbleMode == 2){
-                        drive.clawBase.setPosition(0.5);
+                        drive.Arm.setPosition(0.5);
                     }
                     if(gamepad1.a && !isAPressed){
                         if(wobbleMode == 0){
-                            drive.clawBase.setPosition(0.34);
+                            drive.Arm.setPosition(0.34);
                             wobbleMode = 1;
                         }
                         else if(wobbleMode == 1){
-                            drive.clawBase.setPosition(0.69);
+                            drive.Arm.setPosition(0.69);
                             wobbleMode = 2;
                         }
                         else if(wobbleMode == 2){
-                            drive.clawBase.setPosition(0.5);
+                            drive.Arm.setPosition(0.5);
                             wobbleMode = 0;
                         }
                         isAPressed = true;
@@ -219,12 +221,18 @@ public class BotDriveControl extends LinearOpMode{
                     //Automatic aim code
                     if(gamepad1.left_bumper){
                         Trajectory followGoal = drive.trajectoryBuilder(currentPose)
-                                .splineToSplineHeading(highGoal, 0.0)
+                                .lineToLinearHeading(highGoal)
                                 .build();
                         drive.followTrajectoryAsync(followGoal);
                         mode = Mode.PATH_FOLLOWING;
                     }
 
+                    if(gamepad1.dpad_up){
+                        drive.getVuforiaPosition = true;
+                    }
+                    else {
+                        drive.getVuforiaPosition = false;
+                    }
                     break;
                 }
                 case PATH_FOLLOWING: {
@@ -235,6 +243,7 @@ public class BotDriveControl extends LinearOpMode{
                     if(!drive.isBusy()){
                         mode = Mode.DRIVER_CONTROL;
                     }
+                    break;
                 }
 
             }
