@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
 import com.acmerobotics.roadrunner.control.PIDFController;
@@ -78,7 +79,11 @@ import static org.firstinspires.ftc.teamcode.BotConstants.kV;
    |:  | |:  1   |     |:  | |:  1  \    |:  |
    |::.| |::.. . |     |::.| |::.. . |   |::.|
    `---' `-------'     `---' `-------'   `---'
-Cricket Font
+
+ ______  _____ _______ _______  _____   _____   _____         _     _ _______
+ |     \   |   |______ |       |     | |_____] |     | |      |     | |______
+ |_____/ __|__ ______| |_____  |_____| |       |_____| |_____ |_____| ______|
+
  */
 
 @Config
@@ -180,10 +185,12 @@ public class Bot extends MecanumDrive {
     public Servo Latch;
     public BNO055IMU imu;
     public WebcamName Webcam;
+    
+    public MultipleTelemetry telemetry;
 
-    private VoltageSensor batteryVoltageSensor;
+    public VoltageSensor batteryVoltageSensor;
     public boolean isFeeding = false;
-    public boolean isShooting = false;
+    private boolean isShooting = false;
     public int numRings = 0;
 
     public Bot(HardwareMap hardwareMap) {
@@ -191,6 +198,7 @@ public class Bot extends MecanumDrive {
 
         dashboard = FtcDashboard.getInstance();
         dashboard.setTelemetryTransmissionInterval(25);
+        telemetry = new MultipleTelemetry(dashboard.getTelemetry());
 
         clock = NanoClock.system();
 
@@ -458,6 +466,10 @@ public class Bot extends MecanumDrive {
         return detectedStack;
     }
 
+    public void resetHeading(){
+        setExternalHeading(0.0);
+    }
+
     public Pose2d getLastError() {
         switch (mode) {
             case FOLLOW_TRAJECTORY:
@@ -497,6 +509,7 @@ public class Bot extends MecanumDrive {
         updatePoseEstimate();
 
         Pose2d currentPose = getPoseEstimate();
+        Pose2d velocity = getPoseVelocity();
         Pose2d lastError = getLastError();
         PoseStorage.currentPose = currentPose;
 
@@ -509,20 +522,21 @@ public class Bot extends MecanumDrive {
         TelemetryPacket packet = new TelemetryPacket();
         Canvas fieldOverlay = packet.fieldOverlay();
 
-        packet.put("mode", mode);
+        telemetry.addData("mode", mode);
 
-        packet.put("x", currentPose.getX());
-        packet.put("y", currentPose.getY());
-        packet.put("heading", currentPose.getHeading());
+        telemetry.addData("x", currentPose.getX());
+        telemetry.addData("y", currentPose.getY());
+        telemetry.addData("heading", currentPose.getHeading());
 
-        packet.put("xError", lastError.getX());
-        packet.put("yError", lastError.getY());
-        packet.put("headingError", lastError.getHeading());
+        telemetry.addData("xError", lastError.getX());
+        telemetry.addData("yError", lastError.getY());
+        telemetry.addData("headingError", lastError.getHeading());
+        telemetry.addData("Velocity", velocity);
 
         targetVisible = false;
         for (VuforiaTrackable trackable : vuforiaTrackables) {
             if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
-                packet.put("Visible Target", trackable.getName());
+                telemetry.addData("Visible Target", trackable.getName());
                 targetVisible = true;
 
                 // getUpdatedRobotLocation() will return null if no new information is available since
@@ -539,25 +553,25 @@ public class Bot extends MecanumDrive {
         if (targetVisible) {
             // express position (translation) of robot in inches.
             VectorF translation = lastLocation.getTranslation();
-            packet.put("Pos (in)(X, Y, Z) : ",
+            telemetry.addData("Pos (in)(X, Y, Z) : ",
                     translation.get(0) / mmPerInch + ", " + translation.get(1) / mmPerInch + ", " + translation.get(2) / mmPerInch);
 
             // express the rotation of the robot in degrees.
             Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
-            packet.put("Rot (deg)(Roll, Pitch, Heading) : ", rotation.firstAngle + ", " + rotation.secondAngle + ", " + rotation.thirdAngle);
+            telemetry.addData("Rot (deg)(Roll, Pitch, Heading) : ", rotation.firstAngle + ", " + rotation.secondAngle + ", " + rotation.thirdAngle);
 //            setPoseEstimate(new Pose2d(translation.get(0)/mmPerInch,translation.get(1)/mmPerInch,rotation.thirdAngle));
             DashboardUtil.drawRobot(fieldOverlay, new Pose2d(translation.get(0)/mmPerInch+Math.cos(currentPose.getHeading())*(-8.5)-Math.sin(currentPose.getHeading())*3.35,translation.get(1)/mmPerInch+Math.sin(currentPose.getHeading())*(-8.5)+Math.cos(currentPose.getHeading())*3.35,currentPose.getHeading()));
-            if(usingVuforia){
+            if(usingVuforia && velocity.getX()+velocity.getY()+velocity.getHeading()<0.5){
                 setPoseEstimate(new Pose2d(translation.get(0)/mmPerInch+Math.cos(currentPose.getHeading())*(-8.5)-Math.sin(currentPose.getHeading())*3.35,translation.get(1)/mmPerInch+Math.sin(currentPose.getHeading())*(-8.5)+Math.cos(currentPose.getHeading())*3.35,currentPose.getHeading()));
                 poseHistory.clear();
             }
-            if(getVuforiaPosition){
+            if(getVuforiaPosition && velocity.getX()+velocity.getY()+velocity.getHeading()<0.5){
                 setPoseEstimate(new Pose2d(translation.get(0)/mmPerInch+Math.cos(currentPose.getHeading())*(-8.5)-Math.sin(currentPose.getHeading())*3.35,translation.get(1)/mmPerInch+Math.sin(currentPose.getHeading())*(-8.5)+Math.cos(currentPose.getHeading())*3.35,currentPose.getHeading()));
                 poseHistory.clear();
             }
         }
         else {
-            packet.put("Visible Target", "none");
+            telemetry.addData("Visible Target", "none");
         }
 
         if(Intake.getCurrent(CurrentUnit.AMPS)>5.0 && !isFeeding){
@@ -568,9 +582,20 @@ public class Bot extends MecanumDrive {
             isFeeding = false;
         }
 
-        packet.put("Intake Current", Intake.getCurrent(CurrentUnit.AMPS));
-        packet.put("Shooter Current", Shooter.getCurrent(CurrentUnit.AMPS));
-        packet.put("Number of Rings", numRings);
+        if(Shooter.getCurrent(CurrentUnit.AMPS)>6.0 && !isShooting){
+            isShooting = true;
+        }
+        else if(Shooter.getCurrent(CurrentUnit.AMPS)>4.0 && !isShooting){
+            numRings--;
+            isShooting = true;
+        }
+        if(Shooter.getCurrent(CurrentUnit.AMPS)<2.0){
+            isShooting = false;
+        }
+
+        telemetry.addData("Intake Current", Intake.getCurrent(CurrentUnit.AMPS));
+        telemetry.addData("Shooter Current", Shooter.getCurrent(CurrentUnit.AMPS));
+        telemetry.addData("Number of Rings", numRings);
 
         switch (mode) {
             case IDLE:
@@ -605,16 +630,16 @@ public class Bot extends MecanumDrive {
                         // the last time that call was made.
                         List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                         if (updatedRecognitions != null) {
-                            packet.put("# Object Detected", updatedRecognitions.size());
+                            telemetry.addData("# Object Detected", updatedRecognitions.size());
                             // step through the list of recognitions and display boundary info.
                             int i = 0;
                             for (Recognition recognition : updatedRecognitions) {
                                 detectedStack = recognition.getLabel();
-                                packet.put(String.format("label (%d)", i), recognition.getLabel());
-                                packet.put(String.format("  left most coordinate (%d)", i), recognition.getLeft());
-                                packet.put(String.format("  top most coordinate (%d)", i), recognition.getTop());
-                                packet.put(String.format("  right most coordinate (%d)", i), recognition.getRight());
-                                packet.put(String.format("  bottom most coordinate (%d)", i), recognition.getBottom());
+                                telemetry.addData(String.format("label (%d)", i), recognition.getLabel());
+                                telemetry.addData(String.format("  left most coordinate (%d)", i), recognition.getLeft());
+                                telemetry.addData(String.format("  top most coordinate (%d)", i), recognition.getTop());
+                                telemetry.addData(String.format("  right most coordinate (%d)", i), recognition.getRight());
+                                telemetry.addData(String.format("  bottom most coordinate (%d)", i), recognition.getBottom());
                             }
                         }
                     }
@@ -631,7 +656,7 @@ public class Bot extends MecanumDrive {
         fieldOverlay.setStroke("#3F51B5");
         DashboardUtil.drawRobot(fieldOverlay, currentPose);
 
-        dashboard.sendTelemetryPacket(packet);
+        telemetry.update();
     }
 
     public void waitForIdle() {

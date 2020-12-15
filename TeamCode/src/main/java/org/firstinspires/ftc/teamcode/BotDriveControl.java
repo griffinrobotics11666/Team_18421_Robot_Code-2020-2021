@@ -26,12 +26,20 @@ public class BotDriveControl extends LinearOpMode{
     X = Shoot Button - Only works if shooter is on
     Y = Shooter Toggle
 
-    Left Joystick = Field Centric Drive
-    Right Joystick = Robot Heading
+    Left Joystick = Drive
+    Right Joystick = Turn
 
     Dpad Left = Reverse Feeder - Only works if feeder is off
     Dpad Down = Quit Path Following
     Dpad Up = Reset Position using Vuforia
+    Dpad Right = Reset Heading to 0 (Straight towards the goals)
+
+    Back = Toggle Field Centric Drive
+
+    Left Bumper = Automatically drive to shoot at High Goal
+
+    Left Trigger = Linear Slide down
+    Right Trigger = Linear Slide up
      */
 
 
@@ -39,15 +47,15 @@ public class BotDriveControl extends LinearOpMode{
     private static double triggerEnd = 0.1;
 
     private static boolean fieldCentric = true;
-
-    public static Pose2d highGoal = new Pose2d(-4,-40, Math.toRadians(12));
-    public static Pose2d rightPower = new Pose2d(-4, -25, Math.toRadians(12));
-    public static Pose2d middlePower = new Pose2d(-4, -25, Math.toRadians(30));
-    public static Pose2d leftPower = new Pose2d(-4, -25, Math.toRadians(45));
+    public static Pose2d highGoal = new Pose2d(-5,-36, Math.toRadians(0));
+    public static Pose2d powerShot = new Pose2d(2, -18.5, Math.toRadians(0));
+    private boolean arePowerShooting = false;
+//    public static Pose2d middlePower = new Pose2d(2, -11.5, Math.toRadians(0));
+//    public static Pose2d leftPower = new Pose2d(2, -5.5, Math.toRadians(0));
 
     private ElapsedTime shootingClock = new ElapsedTime();
-    public static double shootingDelay = 500;
-    public static double shootingCooldown = 500;
+    public static double shootingDelay = 300;
+    public static double shootingCooldown = 300;
     private enum ShootingState{
         SHOOT,
         RESET,
@@ -60,6 +68,9 @@ public class BotDriveControl extends LinearOpMode{
     private boolean isBPressed = false;
     private int wobbleMode = 0;
     private boolean isAPressed = false;
+    private boolean isBackPressed = false;
+    private double linearSlideCoefficient = 1;
+    private double shootSpeed = 1;
 
     private enum Mode {
         DRIVER_CONTROL,
@@ -72,13 +83,16 @@ public class BotDriveControl extends LinearOpMode{
         Bot drive = new Bot(hardwareMap);
         drive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         drive.setPoseEstimate(PoseStorage.currentPose);
+        drive.telemetry.addTelemetry(telemetry);
         drive.usingVuforia(false);
 
         drive.initVision();
-        drive.Arm.setPosition(0.9);
+        drive.Arm.setPosition(1);
         drive.Trigger.setPosition(triggerStart);
-        telemetry.addData("Ready!", "");
-        telemetry.update();
+        drive.Latch.setPosition(0.0);
+
+        drive.telemetry.addData("Ready!", "");
+        drive.telemetry.update();
         waitForStart();
         drive.detectStarterStack(1);
 
@@ -86,27 +100,30 @@ public class BotDriveControl extends LinearOpMode{
             Pose2d currentPose = drive.getPoseEstimate();
             switch(mode){
                 case DRIVER_CONTROL: {
+                    //Linear Slide Control
+                    drive.linearSlide.setPosition(0.5-(gamepad1.left_trigger*linearSlideCoefficient*0.5)+(gamepad1.right_trigger*linearSlideCoefficient*0.5));
+
                     //Wobble Cycle
                     if(wobbleMode == 0){
-                        drive.Arm.setPosition(0.34);
+                        drive.Arm.setPosition(1.0);
                     }
                     else if(wobbleMode == 1){
-                        drive.Arm.setPosition(0.69);
+                        drive.Arm.setPosition(0.4);
                     }
                     else if(wobbleMode == 2){
-                        drive.Arm.setPosition(0.5);
+                        drive.Arm.setPosition(0.8);
                     }
                     if(gamepad1.a && !isAPressed){
                         if(wobbleMode == 0){
-                            drive.Arm.setPosition(0.34);
+                            drive.Arm.setPosition(1.0);
                             wobbleMode = 1;
                         }
                         else if(wobbleMode == 1){
-                            drive.Arm.setPosition(0.69);
+                            drive.Arm.setPosition(0.4);
                             wobbleMode = 2;
                         }
                         else if(wobbleMode == 2){
-                            drive.Arm.setPosition(0.5);
+                            drive.Arm.setPosition(0.8);
                             wobbleMode = 0;
                         }
                         isAPressed = true;
@@ -134,7 +151,7 @@ public class BotDriveControl extends LinearOpMode{
                     else {
                         //Intake Reversal
                         if(gamepad1.dpad_left){
-                            drive.Intake.setPower(0.3);
+                            drive.Intake.setPower(0.6);
                         }
                         else{
                             drive.Intake.setPower(0);
@@ -156,7 +173,15 @@ public class BotDriveControl extends LinearOpMode{
                         isBPressed = false;
                     }
                     if(isShooting){
-                        drive.Shooter.setPower(1.0);
+                        if(drive.batteryVoltageSensor.getVoltage()>=13){
+                            drive.Shooter.setPower(0.83*shootSpeed);
+                        }
+//        else if(drive.batteryVoltageSensor.getVoltage()>=13){
+//            drive.Shooter.setPower(0.88);
+//        }
+                        else {
+                            drive.Shooter.setPower(1.0*shootSpeed);
+                        }
                     }
                     else {
                         drive.Shooter.setPower(0);
@@ -227,12 +252,54 @@ public class BotDriveControl extends LinearOpMode{
                         mode = Mode.PATH_FOLLOWING;
                     }
 
+                    //Auto PowerShot code
+                    if(gamepad1.right_bumper && !arePowerShooting){
+                        arePowerShooting = true;
+                        shootSpeed = 0.8;
+                        Trajectory initialPos = drive.trajectoryBuilder(currentPose)
+                                .lineToLinearHeading(powerShot)
+                                .build();
+                        drive.followTrajectoryAsync(initialPos);
+                        mode = Mode.PATH_FOLLOWING;
+                    }
+                    else if(gamepad1.right_bumper && arePowerShooting){
+                        Trajectory adjust = drive.trajectoryBuilder(currentPose)
+                                .strafeLeft(7)
+                                .build();
+                        drive.followTrajectoryAsync(adjust);
+                        mode = Mode.PATH_FOLLOWING;
+                    }
+                    if(gamepad1.left_stick_button){
+                        arePowerShooting = false;
+                        shootSpeed = 1;
+                    }
+
+                    //Reset Position
                     if(gamepad1.dpad_up){
                         drive.getVuforiaPosition = true;
                     }
                     else {
                         drive.getVuforiaPosition = false;
                     }
+
+                    //Reset Heading
+                    if(gamepad1.dpad_right){
+                        drive.resetHeading();
+                    }
+
+                    //Field Centric Drive Toggle
+                    if(gamepad1.back && fieldCentric && !isBackPressed) {
+                        fieldCentric = false;
+                        isBackPressed = true;
+                    }
+                    else if(gamepad1.back && !fieldCentric && !isBackPressed) {
+                        fieldCentric = true;
+                        isBackPressed = true;
+                    }
+                    if(!gamepad1.back){
+                        isBackPressed = false;
+                    }
+
                     break;
                 }
                 case PATH_FOLLOWING: {
